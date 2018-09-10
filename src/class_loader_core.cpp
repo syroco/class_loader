@@ -36,6 +36,28 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+#include <stdio.h>  /* defines FILENAME_MAX */
+
+#ifdef _WIN32
+#include <direct.h>
+#define getcwd _getcwd
+#else
+#include <unistd.h>
+#endif
+
+std::string getCurrentWorkingDir( void ) {
+  char buff[FILENAME_MAX];
+  getcwd( buff, FILENAME_MAX );
+  std::string current_working_dir(buff);
+  return current_working_dir;
+}
+
+const char kPathSeparator =
+#ifdef _WIN32
+                            '\\';
+#else
+                            '/';
+#endif
 
 namespace class_loader
 {
@@ -448,8 +470,11 @@ void loadLibrary(const std::string & library_path, ClassLoader * loader)
   {
       setCurrentlyActiveClassLoader(loader);
       setCurrentlyLoadingLibraryName(library_path);
-      library_handle = new libdylib::dylib(library_path.c_str());
-    std::cout << "COUOCUOCUCOUCOU " << library_path << " -> "<<  library_handle->is_open();
+      const std::string complete_lib_path = getCurrentWorkingDir() + kPathSeparator + library_path;
+      library_handle = new libdylib::dylib(complete_lib_path.c_str());
+      
+    std::cout << "DEBUG "<< complete_lib_path << " -> "<<  library_handle->is_open() << '\n';
+    printDebugInfoToScreen();
     setCurrentlyLoadingLibraryName("");
     setCurrentlyActiveClassLoader(nullptr);
   }
