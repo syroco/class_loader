@@ -32,15 +32,14 @@
 #ifndef CLASS_LOADER__CLASS_LOADER_HPP_
 #define CLASS_LOADER__CLASS_LOADER_HPP_
 
-#include <boost/bind.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/thread/recursive_mutex.hpp>
+#include <mutex>
 #include <cstddef>
 #include <functional>
 #include <memory>
 #include <string>
 #include <vector>
-
+#include <algorithm>
+#include <cassert>
 #include "console_bridge/console.h"
 
 #include "class_loader/class_loader_core.hpp"
@@ -128,20 +127,7 @@ public:
   {
     return std::shared_ptr<Base>(
       createRawInstance<Base>(derived_class_name, true),
-      boost::bind(&ClassLoader::onPluginDeletion<Base>, this, _1));
-  }
-
-  /**
-   * @brief  Generates an instance of loadable classes (i.e. class_loader).
-   *
-   * Same as createSharedInstance() except it returns a boost::shared_ptr.
-   */
-  template<class Base>
-  boost::shared_ptr<Base> createInstance(const std::string & derived_class_name)
-  {
-    return boost::shared_ptr<Base>(
-      createRawInstance<Base>(derived_class_name, true),
-      boost::bind(&ClassLoader::onPluginDeletion<Base>, this, _1));
+      std::bind(&ClassLoader::onPluginDeletion<Base>, this, std::placeholders::_1));
   }
 
   /**
@@ -162,7 +148,7 @@ public:
     Base * raw = createRawInstance<Base>(derived_class_name, true);
     return std::unique_ptr<Base, DeleterType<Base>>(
       raw,
-      boost::bind(&ClassLoader::onPluginDeletion<Base>, this, _1));
+      std::bind(&ClassLoader::onPluginDeletion<Base>, this, std::placeholders::_1));
   }
 
   /**
@@ -246,10 +232,10 @@ private:
     if (nullptr == obj) {
       return;
     }
-    boost::recursive_mutex::scoped_lock lock(plugin_ref_count_mutex_);
+    std::lock_guard<std::recursive_mutex> lock(plugin_ref_count_mutex_);
     delete (obj);
     plugin_ref_count_ = plugin_ref_count_ - 1;
-    assert(plugin_ref_count_ >= 0);
+
     if (0 == plugin_ref_count_ && isOnDemandLoadUnloadEnabled()) {
       if (!ClassLoader::hasUnmanagedInstanceBeenCreated()) {
         unloadLibraryInternal(false);
@@ -288,7 +274,7 @@ private:
     {
       CONSOLE_BRIDGE_logInform("%s",
         "class_loader::ClassLoader: "
-        "An attempt is being made to create a managed plugin instance (i.e. boost::shared_ptr), "
+        "An attempt is being made to create a managed plugin instance (i.e. std::shared_ptr), "
         "however an unmanaged instance was created within this process address space. "
         "This means libraries for the managed instances will not be shutdown automatically on "
         "final plugin destruction if on demand (lazy) loading/unloading mode is used."
@@ -302,7 +288,7 @@ private:
     assert(obj != nullptr);  // Unreachable assertion if createInstance() throws on failure
 
     if (managed) {
-      boost::recursive_mutex::scoped_lock lock(plugin_ref_count_mutex_);
+      std::lock_guard<std::recursive_mutex> lock(plugin_ref_count_mutex_);
       ++plugin_ref_count_;
     }
 
@@ -327,9 +313,9 @@ private:
   bool ondemand_load_unload_;
   std::string library_path_;
   int load_ref_count_;
-  boost::recursive_mutex load_ref_count_mutex_;
+  std::recursive_mutex load_ref_count_mutex_;
   int plugin_ref_count_;
-  boost::recursive_mutex plugin_ref_count_mutex_;
+  std::recursive_mutex plugin_ref_count_mutex_;
   static bool has_unmananged_instance_been_created_;
 };
 

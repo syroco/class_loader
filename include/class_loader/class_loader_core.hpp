@@ -32,7 +32,7 @@
 #ifndef CLASS_LOADER__CLASS_LOADER_CORE_HPP_
 #define CLASS_LOADER__CLASS_LOADER_CORE_HPP_
 
-#include <boost/thread/recursive_mutex.hpp>
+#include <mutex>
 #include <cstddef>
 #include <cstdio>
 #include <map>
@@ -41,7 +41,7 @@
 #include <utility>
 #include <vector>
 
-#include "Poco/SharedLibrary.h"
+#include "libdylib/libdylibxx.h"
 
 #include "class_loader/exceptions.hpp"
 #include "class_loader/meta_object.hpp"
@@ -65,7 +65,7 @@ typedef std::string ClassName;
 typedef std::string BaseClassName;
 typedef std::map<ClassName, impl::AbstractMetaObjectBase *> FactoryMap;
 typedef std::map<BaseClassName, FactoryMap> BaseToFactoryMapMap;
-typedef std::pair<LibraryPath, Poco::SharedLibrary *> LibraryPair;
+typedef std::pair<LibraryPath, libdylib::dylib *> LibraryPair;
 typedef std::vector<LibraryPair> LibraryVector;
 typedef std::vector<AbstractMetaObjectBase *> MetaObjectVector;
 
@@ -141,9 +141,9 @@ FactoryMap & getFactoryMapForBaseClass()
  * @return A reference to the global mutex
  */
 CLASS_LOADER_PUBLIC
-boost::recursive_mutex & getLoadedLibraryVectorMutex();
+std::recursive_mutex & getLoadedLibraryVectorMutex();
 CLASS_LOADER_PUBLIC
-boost::recursive_mutex & getPluginBaseToFactoryMapMapMutex();
+std::recursive_mutex & getPluginBaseToFactoryMapMapMutex();
 
 /**
  * @brief Indicates if a library containing more than just plugins has been opened by the running process
@@ -291,7 +291,7 @@ Base * createInstance(const std::string & derived_class_name, ClassLoader * load
 template<typename Base>
 std::vector<std::string> getAvailableClasses(ClassLoader * loader)
 {
-  boost::recursive_mutex::scoped_lock lock(getPluginBaseToFactoryMapMapMutex());
+  std::lock_guard<std::recursive_mutex> lock(getPluginBaseToFactoryMapMapMutex());
 
   FactoryMap & factory_map = getFactoryMapForBaseClass<Base>();
   std::vector<std::string> classes;

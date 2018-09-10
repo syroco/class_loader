@@ -32,7 +32,7 @@
 #ifndef CLASS_LOADER__MULTI_LIBRARY_CLASS_LOADER_HPP_
 #define CLASS_LOADER__MULTI_LIBRARY_CLASS_LOADER_HPP_
 
-#include <boost/thread.hpp>
+#include <thread>
 #include <cstddef>
 #include <map>
 #include <string>
@@ -117,10 +117,10 @@ public:
 
   /**
    * @brief Creates an instance of an object of given class name with ancestor class Base
-   * Same as createSharedInstance() except it returns a boost::shared_ptr.
+   * Same as createSharedInstance() except it returns a std::shared_ptr.
    */
   template<class Base>
-  boost::shared_ptr<Base> createInstance(const std::string & class_name)
+  std::shared_ptr<Base> createInstance(const std::string & class_name)
   {
     CONSOLE_BRIDGE_logDebug(
       "class_loader::MultiLibraryClassLoader: "
@@ -135,15 +135,15 @@ public:
               "was explicitly loaded through MultiLibraryClassLoader::loadLibrary()");
     }
 
-    return loader->createInstance<Base>(class_name);
+    return loader->createSharedInstance<Base>(class_name);
   }
 
   /**
    * @brief Creates an instance of an object of given class name with ancestor class Base
-   * Same as createSharedInstance() except it returns a boost::shared_ptr.
+   * Same as createSharedInstance() except it returns a std::shared_ptr.
    */
   template<class Base>
-  boost::shared_ptr<Base>
+  std::shared_ptr<Base>
   createInstance(const std::string & class_name, const std::string & library_path)
   {
     ClassLoader * loader = getClassLoaderForLibrary(library_path);
@@ -153,7 +153,7 @@ public:
               "MultiLibraryClassLoader bound to library " + library_path +
               " Ensure you called MultiLibraryClassLoader::loadLibrary()");
     }
-    return loader->createInstance<Base>(class_name);
+    return loader->createSharedInstance<Base>(class_name);
   }
 
   /**
@@ -355,7 +355,7 @@ private:
 private:
   bool enable_ondemand_loadunload_;
   LibraryToClassLoaderMap active_class_loaders_;
-  boost::mutex loader_mutex_;
+  std::mutex loader_mutex_;
 };
 
 

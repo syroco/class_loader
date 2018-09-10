@@ -30,8 +30,8 @@
 #include "class_loader/class_loader_core.hpp"
 #include "class_loader/class_loader.hpp"
 
-#include <Poco/SharedLibrary.h>
-
+#include "libdylib/libdylibxx.h"
+#include <iostream>
 #include <cassert>
 #include <cstddef>
 #include <string>
@@ -45,15 +45,15 @@ namespace impl
 
 // Global data
 
-boost::recursive_mutex & getLoadedLibraryVectorMutex()
+std::recursive_mutex & getLoadedLibraryVectorMutex()
 {
-  static boost::recursive_mutex m;
+  static std::recursive_mutex m;
   return m;
 }
 
-boost::recursive_mutex & getPluginBaseToFactoryMapMapMutex()
+std::recursive_mutex & getPluginBaseToFactoryMapMapMutex()
 {
-  static boost::recursive_mutex m;
+  static std::recursive_mutex m;
   return m;
 }
 
@@ -150,7 +150,7 @@ MetaObjectVector allMetaObjects(const FactoryMap & factories)
 
 MetaObjectVector allMetaObjects()
 {
-  boost::recursive_mutex::scoped_lock lock(getPluginBaseToFactoryMapMapMutex());
+  std::lock_guard<std::recursive_mutex> lock(getPluginBaseToFactoryMapMapMutex());
 
   MetaObjectVector all_meta_objs;
   BaseToFactoryMapMap & factory_map_map = getGlobalPluginBaseToFactoryMapMap();
@@ -252,7 +252,7 @@ void destroyMetaObjectsForLibrary(
 
 void destroyMetaObjectsForLibrary(const std::string & library_path, const ClassLoader * loader)
 {
-  boost::recursive_mutex::scoped_lock lock(getPluginBaseToFactoryMapMapMutex());
+  std::lock_guard<std::recursive_mutex> lock(getPluginBaseToFactoryMapMapMutex());
 
   CONSOLE_BRIDGE_logDebug(
     "class_loader.impl: "
@@ -288,13 +288,13 @@ LibraryVector::iterator findLoadedLibrary(const std::string & library_path)
 
 bool isLibraryLoadedByAnybody(const std::string & library_path)
 {
-  boost::recursive_mutex::scoped_lock lock(getLoadedLibraryVectorMutex());
+  std::lock_guard<std::recursive_mutex> lock(getLoadedLibraryVectorMutex());
 
   LibraryVector & open_libraries = getLoadedLibraryVector();
   LibraryVector::iterator itr = findLoadedLibrary(library_path);
 
   if (itr != open_libraries.end()) {
-    assert(itr->second->isLoaded() == true);  // Ensure Poco actually thinks the library is loaded
+    assert(itr->second->is_open() == true);  // Ensure Poco actually thinks the library is loaded
     return true;
   } else {
     return false;
@@ -350,7 +350,7 @@ void addClassLoaderOwnerForAllExistingMetaObjectsForLibrary(
 void revivePreviouslyCreateMetaobjectsFromGraveyard(
   const std::string & library_path, ClassLoader * loader)
 {
-  boost::recursive_mutex::scoped_lock b2fmm_lock(getPluginBaseToFactoryMapMapMutex());
+  std::lock_guard<std::recursive_mutex> b2fmm_lock(getPluginBaseToFactoryMapMapMutex());
   MetaObjectVector & graveyard = getMetaObjectGraveyard();
 
   for (auto & obj : graveyard) {
@@ -376,7 +376,7 @@ void purgeGraveyardOfMetaobjects(
 {
   MetaObjectVector all_meta_objs = allMetaObjects();
   // Note: Lock must happen after call to allMetaObjects as that will lock
-  boost::recursive_mutex::scoped_lock b2fmm_lock(getPluginBaseToFactoryMapMapMutex());
+  std::lock_guard<std::recursive_mutex> b2fmm_lock(getPluginBaseToFactoryMapMapMutex());
 
   MetaObjectVector & graveyard = getMetaObjectGraveyard();
   MetaObjectVector::iterator itr = graveyard.begin();
@@ -427,16 +427,16 @@ void purgeGraveyardOfMetaobjects(
 
 void loadLibrary(const std::string & library_path, ClassLoader * loader)
 {
-  static boost::recursive_mutex loader_mutex;
+  static std::recursive_mutex loader_mutex;
   CONSOLE_BRIDGE_logDebug(
     "class_loader.impl: "
     "Attempting to load library %s on behalf of ClassLoader handle %p...\n",
     library_path.c_str(), reinterpret_cast<void *>(loader));
-  boost::recursive_mutex::scoped_lock loader_lock(loader_mutex);
+  std::lock_guard<std::recursive_mutex> loader_lock(loader_mutex);
 
   // If it's already open, just update existing metaobjects to have an additional owner.
   if (isLibraryLoadedByAnybody(library_path)) {
-    boost::recursive_mutex::scoped_lock lock(getPluginBaseToFactoryMapMapMutex());
+    std::lock_guard<std::recursive_mutex> lock(getPluginBaseToFactoryMapMapMutex());
     CONSOLE_BRIDGE_logDebug("%s",
       "class_loader.impl: "
       "Library already in memory, but binding existing MetaObjects to loader if necesesary.\n");
@@ -444,30 +444,12 @@ void loadLibrary(const std::string & library_path, ClassLoader * loader)
     return;
   }
 
-  Poco::SharedLibrary * library_handle = nullptr;
-
+    libdylib::dylib *library_handle = nullptr;
   {
-    try {
       setCurrentlyActiveClassLoader(loader);
       setCurrentlyLoadingLibraryName(library_path);
-      library_handle = new Poco::SharedLibrary(library_path);
-    } catch (const Poco::LibraryLoadException & e) {
-      setCurrentlyLoadingLibraryName("");
-      setCurrentlyActiveClassLoader(nullptr);
-      throw class_loader::LibraryLoadException(
-              "Could not load library (Poco exception = " + std::string(e.message()) + ")");
-    } catch (const Poco::LibraryAlreadyLoadedException & e) {
-      setCurrentlyLoadingLibraryName("");
-      setCurrentlyActiveClassLoader(nullptr);
-      throw class_loader::LibraryLoadException(
-              "Library already loaded (Poco exception = " + std::string(e.message()) + ")");
-    } catch (const Poco::NotFoundException & e) {
-      setCurrentlyLoadingLibraryName("");
-      setCurrentlyActiveClassLoader(nullptr);
-      throw class_loader::LibraryLoadException(
-              "Library not found (Poco exception = " + std::string(e.message()) + ")");
-    }
-
+      library_handle = new libdylib::dylib(library_path.c_str());
+    std::cout << "COUOCUOCUCOUCOU " << library_path << " -> "<<  library_handle->is_open();
     setCurrentlyLoadingLibraryName("");
     setCurrentlyActiveClassLoader(nullptr);
   }
@@ -499,7 +481,7 @@ void loadLibrary(const std::string & library_path, ClassLoader * loader)
   }
 
   // Insert library into global loaded library vector
-  boost::recursive_mutex::scoped_lock llv_lock(getLoadedLibraryVectorMutex());
+  std::lock_guard<std::recursive_mutex> llv_lock(getLoadedLibraryVectorMutex());
   LibraryVector & open_libraries = getLoadedLibraryVector();
   // Note: Poco::SharedLibrary automatically calls load() when library passed to constructor
   open_libraries.push_back(LibraryPair(library_path, library_handle));
@@ -522,11 +504,11 @@ void unloadLibrary(const std::string & library_path, ClassLoader * loader)
       "class_loader.impl: "
       "Unloading library %s on behalf of ClassLoader %p...",
       library_path.c_str(), reinterpret_cast<void *>(loader));
-    boost::recursive_mutex::scoped_lock lock(getLoadedLibraryVectorMutex());
+    std::lock_guard<std::recursive_mutex> lock(getLoadedLibraryVectorMutex());
     LibraryVector & open_libraries = getLoadedLibraryVector();
     LibraryVector::iterator itr = findLoadedLibrary(library_path);
     if (itr != open_libraries.end()) {
-      Poco::SharedLibrary * library = itr->second;
+      auto library = itr->second;
       std::string library_path = itr->first;
       try {
         destroyMetaObjectsForLibrary(library_path, loader);
@@ -538,8 +520,8 @@ void unloadLibrary(const std::string & library_path, ClassLoader * loader)
             "There are no more MetaObjects left for %s so unloading library and "
             "removing from loaded library vector.\n",
             library_path.c_str());
-          library->unload();
-          assert(library->isLoaded() == false);
+          library->close();
+          assert(library->is_open() == false);
           delete (library);
           itr = open_libraries.erase(itr);
         } else {
@@ -550,10 +532,10 @@ void unloadLibrary(const std::string & library_path, ClassLoader * loader)
             library_path.c_str());
         }
         return;
-      } catch (const Poco::RuntimeException & e) {
+      } catch (const std::exception & e) {
         delete (library);
         throw class_loader::LibraryUnloadException(
-                "Could not unload library (Poco exception = " + std::string(e.message()) + ")");
+                "Could not unload library (Poco exception = " + std::string(e.what()) + ")");
       }
     }
     throw class_loader::LibraryUnloadException(
@@ -572,7 +554,7 @@ void printDebugInfoToScreen()
 
   printf("OPEN LIBRARIES IN MEMORY:\n");
   printf("--------------------------------------------------------------------------------\n");
-  boost::recursive_mutex::scoped_lock lock(getLoadedLibraryVectorMutex());
+  std::lock_guard<std::recursive_mutex> lock(getLoadedLibraryVectorMutex());
   LibraryVector libs = getLoadedLibraryVector();
   for (size_t c = 0; c < libs.size(); c++) {
     printf(

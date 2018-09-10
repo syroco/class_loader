@@ -48,7 +48,7 @@ const std::string LIBRARY_2 = class_loader::systemLibraryFormat("class_loader_Te
 TEST(ClassLoaderTest, basicLoad) {
   try {
     class_loader::ClassLoader loader1(LIBRARY_1, false);
-    loader1.createInstance<Base>("Cat")->saySomething();  // See if lazy load works
+    loader1.createSharedInstance<Base>("Cat")->saySomething();  // See if lazy load works
   } catch (class_loader::ClassLoaderException & e) {
     FAIL() << "ClassLoaderException: " << e.what() << "\n";
   }
@@ -81,7 +81,7 @@ TEST(ClassLoaderTest, correctLazyLoadUnload) {
     ASSERT_FALSE(loader1.isLibraryLoaded());
 
     {
-      boost::shared_ptr<Base> obj = loader1.createInstance<Base>("Cat");
+      std::shared_ptr<Base> obj = loader1.createSharedInstance<Base>("Cat");
       ASSERT_TRUE(class_loader::impl::isLibraryLoadedByAnybody(LIBRARY_1));
       ASSERT_TRUE(loader1.isLibraryLoaded());
     }
@@ -100,7 +100,7 @@ TEST(ClassLoaderTest, nonExistentPlugin) {
   class_loader::ClassLoader loader1(LIBRARY_1, false);
 
   try {
-    boost::shared_ptr<Base> obj = loader1.createInstance<Base>("Bear");
+    std::shared_ptr<Base> obj = loader1.createSharedInstance<Base>("Bear");
     if (nullptr == obj) {
       FAIL() << "Null object being returned instead of exception thrown.";
     }
@@ -160,7 +160,7 @@ void run(class_loader::ClassLoader * loader)
 {
   std::vector<std::string> classes = loader->getAvailableClasses<Base>();
   for (auto & class_ : classes) {
-    loader->createInstance<Base>(class_)->saySomething();
+    loader->createSharedInstance<Base>(class_)->saySomething();
   }
 }
 
@@ -235,7 +235,7 @@ TEST(ClassLoaderTest, loadRefCountingLazy) {
     ASSERT_FALSE(loader1.isLibraryLoaded());
 
     {
-      boost::shared_ptr<Base> obj = loader1.createInstance<Base>("Dog");
+      std::shared_ptr<Base> obj = loader1.createSharedInstance<Base>("Dog");
       ASSERT_TRUE(loader1.isLibraryLoaded());
     }
 
@@ -298,7 +298,7 @@ TEST(MultiClassLoaderTest, nonLazyLoad) {
 }
 TEST(MultiClassLoaderTest, noWarningOnLazyLoad) {
   try {
-    boost::shared_ptr<Base> cat, dog, rob;
+    std::shared_ptr<Base> cat, dog, rob;
     {
       class_loader::MultiLibraryClassLoader loader(true);
       loader.loadLibrary(LIBRARY_1);

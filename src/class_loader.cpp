@@ -51,7 +51,17 @@ std::string systemLibraryPrefix()
 
 std::string systemLibrarySuffix()
 {
-  return Poco::SharedLibrary::suffix();
+#ifdef  __APPLE__
+    return ".dylib";
+#endif
+#ifdef _WIN32
+    #ifdef _DEBUG
+        return "d.dll";
+    #else // _DEBUG
+        return ".dll";
+#endif
+#endif
+    return ".so";
 }
 
 
@@ -95,7 +105,7 @@ bool ClassLoader::isLibraryLoadedByAnyClassloader()
 
 void ClassLoader::loadLibrary()
 {
-  boost::recursive_mutex::scoped_lock lock(load_ref_count_mutex_);
+  std::lock_guard<std::recursive_mutex> lock(load_ref_count_mutex_);
   load_ref_count_ = load_ref_count_ + 1;
   class_loader::impl::loadLibrary(getLibraryPath(), this);
 }
@@ -107,11 +117,8 @@ int ClassLoader::unloadLibrary()
 
 int ClassLoader::unloadLibraryInternal(bool lock_plugin_ref_count)
 {
-  boost::recursive_mutex::scoped_lock load_ref_lock(load_ref_count_mutex_);
-  boost::recursive_mutex::scoped_lock plugin_ref_lock;
-  if (lock_plugin_ref_count) {
-    plugin_ref_lock = boost::recursive_mutex::scoped_lock(plugin_ref_count_mutex_);
-  }
+  (void)lock_plugin_ref_count;
+  std::lock_guard<std::recursive_mutex> load_ref_lock(load_ref_count_mutex_);
 
   if (plugin_ref_count_ > 0) {
     CONSOLE_BRIDGE_logWarn("%s",
