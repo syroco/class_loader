@@ -19,7 +19,15 @@ endif()
 
 add_subdirectory(external/libdylib)
 
-find_package(console_bridge REQUIRED)
+find_package(console_bridge QUIET)
+if(NOT ${console_bridge_FOUND})
+    set(CLASS_LOADER_ENABLE_TESTING ${CONSOLE_BRIDGE_ENABLE_TESTING} CACHE BOOL "Build tests")
+    add_subdirectory(external/console_bridge-0.4.0)
+    set(console_bridge_LIBRARIES console_bridge)
+    set(console_bridge_INCLUDE_DIRS external/console_bridge-0.4.0/include
+            ${PROJECT_BINARY_DIR}/external/console_bridge-0.4.0 # where console_bridge-exports.h is generated
+        )
+endif()
 
 if(${catkin_FOUND})
   find_package(catkin REQUIRED COMPONENTS cmake_modules)
@@ -74,9 +82,7 @@ install(PROGRAMS scripts/class_loader_headers_update.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 if(CATKIN_ENABLE_TESTING OR CLASS_LOADER_ENABLE_TESTING)
-    if(NOT TARGET gtest)
-        add_subdirectory(${PROJECT_SOURCE_DIR}/external/googletest-release-1.8.1)
-    endif()
+    include_directories(external/console_bridge-0.4.0/test/gtest/include)
     add_subdirectory(test)
 endif()
 
