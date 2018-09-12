@@ -74,8 +74,10 @@ install(PROGRAMS scripts/class_loader_headers_update.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 if(CATKIN_ENABLE_TESTING OR CLASS_LOADER_ENABLE_TESTING)
-  add_subdirectory(${PROJECT_SOURCE_DIR}/external/googletest-release-1.8.1)
-  add_subdirectory(test)
+    if(NOT TARGET gtest)
+        add_subdirectory(${PROJECT_SOURCE_DIR}/external/googletest-release-1.8.1)
+    endif()
+    add_subdirectory(test)
 endif()
 
 if(NOT catkin_FOUND)
