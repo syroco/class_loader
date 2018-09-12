@@ -40,7 +40,7 @@
 #include <typeinfo>
 #include <utility>
 #include <vector>
-
+#include <iostream>
 #include "libdylib/libdylibxx.h"
 
 #include "class_loader/exceptions.hpp"

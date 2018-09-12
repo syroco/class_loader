@@ -471,10 +471,11 @@ void loadLibrary(const std::string & library_path, ClassLoader * loader)
       setCurrentlyActiveClassLoader(loader);
       setCurrentlyLoadingLibraryName(library_path);
       const std::string complete_lib_path = getCurrentWorkingDir() + kPathSeparator + library_path;
+      // Loads the library on memory
       library_handle = new libdylib::dylib(complete_lib_path.c_str());
-      
-    std::cout << "DEBUG "<< complete_lib_path << " -> "<<  library_handle->is_open() << '\n';
-    printDebugInfoToScreen();
+        if (!library_handle)
+            throw class_loader::LibraryLoadException("Could not load library " + library_path + " (complete path " + complete_lib_path + ")");
+
     setCurrentlyLoadingLibraryName("");
     setCurrentlyActiveClassLoader(nullptr);
   }
@@ -508,7 +509,7 @@ void loadLibrary(const std::string & library_path, ClassLoader * loader)
   // Insert library into global loaded library vector
   std::lock_guard<std::recursive_mutex> llv_lock(getLoadedLibraryVectorMutex());
   LibraryVector & open_libraries = getLoadedLibraryVector();
-  // Note: Poco::SharedLibrary automatically calls load() when library passed to constructor
+
   open_libraries.push_back(LibraryPair(library_path, library_handle));
 }
 

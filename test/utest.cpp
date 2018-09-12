@@ -47,6 +47,7 @@ const std::string LIBRARY_2 = class_loader::systemLibraryFormat("class_loader_Te
 
 TEST(ClassLoaderTest, basicLoad) {
   try {
+    //console_bridge::setLogLevel(console_bridge::LogLevel::CONSOLE_BRIDGE_LOG_DEBUG);
     class_loader::ClassLoader loader1(LIBRARY_1, false);
     loader1.createSharedInstance<Base>("Cat")->saySomething();  // See if lazy load works
   } catch (class_loader::ClassLoaderException & e) {
