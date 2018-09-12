@@ -49,6 +49,4 @@ void run_tests()
     TEST(returns_0() == 0);
     TEST(returns_1() == 1);
 
-    TEST(libdylib_open_self());
-    TEST(libdylib_find(libdylib_open_self(), "main"));
 }

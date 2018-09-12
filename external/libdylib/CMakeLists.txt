@@ -15,13 +15,13 @@ option(BUILD_TESTS BOOL OFF)
 if(BUILD_TESTS)
     include_directories(.)
     add_executable(c-tests tests/c-tests.c)
-    target_link_libraries(c-tests libdylib)
+    target_link_libraries(c-tests libdylib ${CMAKE_DL_LIBS})
 
     add_executable(cpp-tests tests/cpp-tests.cpp)
-    target_link_libraries(cpp-tests libdylibxx)
+    target_link_libraries(cpp-tests libdylibxx ${CMAKE_DL_LIBS})
 
     add_library(testlib SHARED tests/lib.c)
     set_target_properties(testlib PROPERTIES PREFIX "" SUFFIX ".dylib") # For consistency, use "testlib.dylib"
-
+    
     add_library(ptestlib SHARED tests/lib.c)
 endif(BUILD_TESTS)

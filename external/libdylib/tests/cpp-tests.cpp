@@ -52,10 +52,6 @@ void run_tests()
     TEST(DYLIB_BINDNAME(lib, returns_1));
     TEST(returns_1() == 1);
 
-    TEST(libdylib::self.is_open());
-    TEST(libdylib::get_handle(libdylib::self.get_handle()) == libdylib::get_handle(libdylib::open_self()));
-    TEST(libdylib::self.find("main"));
-
     {
         dylib_ref *handle = NULL;
         {

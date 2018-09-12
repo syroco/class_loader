@@ -17,20 +17,20 @@ if(NOT CATKIN_DISABLED)
   find_package(catkin QUIET)
 endif()
 
+# console_bridge
+set(CLASS_LOADER_ENABLE_TESTING ${CONSOLE_BRIDGE_ENABLE_TESTING})
+add_subdirectory(external/console_bridge-0.4.0)
+set(console_bridge_LIBRARIES console_bridge)
+set(console_bridge_INCLUDE_DIRS external/console_bridge-0.4.0/include
+        ${PROJECT_BINARY_DIR}/external/console_bridge-0.4.0 # where console_bridge-exports.h is generated
+    )
+
+
+set(BUILD_TESTS ${CLASS_LOADER_ENABLE_TESTING} CACHE BOOL "Build tests")
 add_subdirectory(external/libdylib)
 
-find_package(console_bridge QUIET)
-if(NOT ${console_bridge_FOUND})
-    set(CLASS_LOADER_ENABLE_TESTING ${CONSOLE_BRIDGE_ENABLE_TESTING} CACHE BOOL "Build tests")
-    add_subdirectory(external/console_bridge-0.4.0)
-    set(console_bridge_LIBRARIES console_bridge)
-    set(console_bridge_INCLUDE_DIRS external/console_bridge-0.4.0/include
-            ${PROJECT_BINARY_DIR}/external/console_bridge-0.4.0 # where console_bridge-exports.h is generated
-        )
-endif()
 
 if(${catkin_FOUND})
-  find_package(catkin REQUIRED COMPONENTS cmake_modules)
   catkin_package(
     INCLUDE_DIRS include
     LIBRARIES ${PROJECT_NAME} ${CMAKE_DL_LIBS}

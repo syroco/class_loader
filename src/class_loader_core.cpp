@@ -466,18 +466,18 @@ void loadLibrary(const std::string & library_path, ClassLoader * loader)
     return;
   }
 
-    libdylib::dylib *library_handle = nullptr;
+  libdylib::dylib *library_handle = nullptr;
   {
-      setCurrentlyActiveClassLoader(loader);
-      setCurrentlyLoadingLibraryName(library_path);
-      const std::string complete_lib_path = getCurrentWorkingDir() + kPathSeparator + library_path;
-      // Loads the library on memory
-      library_handle = new libdylib::dylib(complete_lib_path.c_str());
-        if (!library_handle)
-            throw class_loader::LibraryLoadException("Could not load library " + library_path + " (complete path " + complete_lib_path + ")");
+    setCurrentlyActiveClassLoader(loader);
+    setCurrentlyLoadingLibraryName(library_path);
+    const std::string complete_lib_path = getCurrentWorkingDir() + kPathSeparator + library_path;
+    // Loads the library on memory
+    library_handle = new libdylib::dylib(complete_lib_path.c_str());
+    if (!library_handle)
+        throw class_loader::LibraryLoadException("Could not load library " + library_path + " (complete path " + complete_lib_path + ")");
 
-    setCurrentlyLoadingLibraryName("");
-    setCurrentlyActiveClassLoader(nullptr);
+    //setCurrentlyLoadingLibraryName("");
+    //setCurrentlyActiveClassLoader(nullptr);
   }
 
   assert(library_handle != nullptr);

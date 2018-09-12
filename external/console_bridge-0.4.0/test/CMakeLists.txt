@@ -8,12 +8,16 @@ link_directories(
   ${PROJECT_BINARY_DIR}/test
 )
 
-
 # Build gtest
 add_library(gtest STATIC gtest/src/gtest-all.cc)
 add_library(gtest_main STATIC gtest/src/gtest_main.cc)
 target_link_libraries(gtest_main gtest)
 
+if (UNIX AND NOT ANDROID)
+    target_link_libraries(gtest pthread)
+    target_link_libraries(gtest_main pthread)
+endif()
+  
 execute_process(COMMAND cmake -E remove_directory ${CMAKE_BINARY_DIR}/test_results)
 execute_process(COMMAND cmake -E make_directory ${CMAKE_BINARY_DIR}/test_results)
 include_directories(${GTEST_INCLUDE_DIRS})
@@ -36,9 +40,6 @@ foreach(GTEST_SOURCE_file ${tests})
      gtest_main
      gtest
      console_bridge)
-  if (UNIX AND NOT ANDROID)
-    target_link_libraries(${BINARY_NAME} pthread)
-  endif()
 
    add_test(NAME    ${BINARY_NAME}
             COMMAND ${BINARY_NAME}
